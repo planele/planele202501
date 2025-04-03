@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>HNIX 건강보험료 계산기</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      max-width: 550px;
+      margin: auto;
+      padding: 10px;
+      background-color: #FCFCFC;
+    }
+    .section {
+      margin-bottom: 10px;
+      padding: 20px;
+      background: #F3F3F3;
+      border-radius: 5px;
+      border: 1px solid #DDD;
+    }
+    label {
+      display: inline-block;
+      width: 200px;
+      margin-top: 10px;
+    }
+    input, select {
+      padding: 6px;
+      width: 200px;
+      margin-top: 10px;
+    }
+    button {
+      margin-top: 20px;
+      padding: 8px 30px;
+      background-color: #215F9A;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #1a4a76;
+    }
+    .result {
+      margin-top: 20px;
+      padding: 15px;
+      background-color: #FFF;
+      border: 1px dashed #AAA;
+    }
+.center-btn {
+  text-align: center;
+  </style>
+</head>
+<body>
+
+  <!-- 신청 영역 -->
+  <div class="section">
+    <h2>분할 신청</h2>
+    <label for="empId">사번</label>
+    <input type="text" id="empId"><br>
+
+    <label for="splitCount">분할 횟수</label>
+    <select id="splitCount">
+      <option value="">선택</option>
+      <option value="1">1</option>
+      <option value="2">2</option>
+      <option value="3">3</option>
+      <option value="4">4</option>
+      <option value="5">5</option>
+    </select><br>
+
+<div class="center-btn">
+    <button onclick="handleSubmit()">신청</button>
+  </div>
+</div>
+
+  <!-- 계산기 영역 -->
+  <div class="section">
+    <h2>건강보험 정산금액 계산기</h2>
+    <label>입사일</label><input type="date" id="joinDate"><br>
+    <label>보수총액</label><input type="text" id="salary"><br>
+    <label>근무개월 수</label><input type="number" id="workMonth"><br>
+    <label>건강보험 기납 계</label><input type="text" id="healthPaid"><br>
+    <label>장기요양 기납 계</label><input type="text" id="carePaid"><br>
+
+<div class="center-btn">
+  <button onclick="calculate()">계산하기</button>
+</div>
+
+  <div class="result" id="result"></div>
+  </div>
+
+  <script>
+    const parseNumber = (val) => parseInt((val || '').replace(/[^0-9]/g, '')) || 0;
+    const formatNumber = (n) => n.toLocaleString();
+
+    document.querySelectorAll('input[type="text"]').forEach(el => {
+      el.addEventListener("input", () => {
+        const val = el.value.replace(/[^0-9]/g, "");
+        el.value = val ? parseInt(val).toLocaleString() : "";
+      });
+    });
+
+    function handleSubmit() {
+      const empId = document.getElementById("empId").value.trim();
+      const split = parseInt(document.getElementById("splitCount").value);
+
+      if (!empId || !split) {
+        alert("사번과 분할횟수를 입력해주세요.");
+        return;
+      }
+
+      const url = "https://script.google.com/macros/s/AKfycbw4pi5J9KfSxG4oFuvb8u7BZwpaWikYToKjWEA2slOpdARNLvhXhiD4rGvQvX7jkEqX/exec";
+      fetch(`${url}?mode=submit&name=${encodeURIComponent(empId)}&split1=${split}&split2=`, {
+        method: "GET"
+      })
+      .then(res => res.text())
+      .then(msg => alert(msg))
+      .catch(err => alert("제출 중 오류 발생하였으니 메일로 신청해주시기 바랍니다."));
+    }
+
+    function calculate() {
+      const joinDateStr = document.getElementById("joinDate").value;
+      const salary = parseNumber(document.getElementById("salary").value);
+      const workMonth = parseInt(document.getElementById("workMonth").value);
+      const healthPaid = parseNumber(document.getElementById("healthPaid").value);
+      const carePaid = parseNumber(document.getElementById("carePaid").value);
+      const split = parseInt(document.getElementById("splitCount").value);
+
+      if (!joinDateStr || !salary || !workMonth || !split) {
+        alert("입력값을 모두 채워주세요. (위의 분할횟수 포함)");
+        return;
+      }
+
+      const joinDate = new Date(joinDateStr);
+      let payMonths = workMonth;
+      if (joinDate.getFullYear() === 2024 && joinDate.getDate() > 1) payMonths--;
+
+      const base = Math.floor(salary / workMonth);
+      const healthUnit = Math.floor((base * 0.03545) / 10) * 10;
+      const healthTotal = healthUnit * payMonths;
+      const healthDue = healthTotal - healthPaid;
+
+      const careUnit = Math.floor((healthUnit * 0.1295) / 10) * 10;
+      const careTotal = careUnit * payMonths;
+      const careDue = careTotal - carePaid;
+
+      const healthPerMonth = Math.ceil(healthDue / split);
+      const carePerMonth = Math.ceil(careDue / split);
+
+      document.getElementById("result").innerHTML =
+        `<b>정산보험료</b><br>
+        건강: ${formatNumber(healthDue)}원 → 월 ${formatNumber(healthPerMonth)}원<br>
+        요양: ${formatNumber(careDue)}원 → 월 ${formatNumber(carePerMonth)}원`;
+    }
+  </script>
+
+</body>
+</html>
